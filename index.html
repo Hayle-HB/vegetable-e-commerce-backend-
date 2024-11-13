@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <style>
+    body {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    h1 {
+      color: rgb(255, 0, 179);
+      text-shadow: 2px 2px 3px rgb(0, 179, 255);
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      background-color: rgb(145, 169, 169);
+      padding: 100px;
+      border-radius: 20px;
+    }
+    input {
+      width: 94%;
+      border: 1px solid aqua;
+      padding: 10px;
+      color: blue;
+      font-weight: 900;
+    }
+
+    
+    button {
+      background-color: white;
+      border: 2px solid rgb(0, 255, 195);
+      padding: 9px;
+      width: 100%;
+      margin: 0 auto;
+    }
+  </style>
+  <body>
+    <h1>CSV Import</h1>
+    <form id="csvForm" enctype="multipart/form-data">
+      <input type="file" name="file" id="fileInput" />
+      <button type="submit">Submit</button>
+    </form>
+    <script>
+      const form = document.querySelector("form");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        console.log("Form submission prevented");
+
+        // Get the file from the input
+        const csvFile = document.querySelector('input[type="file"]').files[0];
+        console.log(csvFile);
+
+        if (!csvFile) {
+          console.log("No file selected");
+          return;
+        }
+
+        // Create FormData object and append the file
+        const formData = new FormData();
+        formData.append("file", csvFile);
+
+        try {
+          const response = await fetch("http://localhost:1000/api/products/csv/uploads", {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await response.json();
+          console.log(result); // Check the result here
+        } catch (err) {
+          console.log("Error:", err);
+        }
+      });
+    </script>
+  </body>
+</html>

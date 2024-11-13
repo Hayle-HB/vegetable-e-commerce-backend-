@@ -1,4 +1,9 @@
 const Product = require("../models/Products.js");
+const readCSV = require("../utils/readCSV.js");
+const path = require("path");
+const fs = require('fs');
+const csv = require('csv-parser')
+const Test = require("../models/Test.js");
 const createProduct = async (req, res) => {
   const {
     name,
@@ -279,6 +284,92 @@ const getPopularProducts = async (req, res) => {
   }
 };
 
+const test = async (req, res) => {
+  const filePath = path.resolve(__dirname, "../products.csv"); // Ensure correct path to CSV file
+  const results = [];
+
+  try {
+    // Read and parse the CSV file directly
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on("data", (row) => results.push(row)) // Push each row to the results array
+      .on("end", () => {
+        res.json({ data: results }); // Send parsed data as a JSON response
+      })
+      .on("error", (error) => {
+        console.error("Error parsing CSV:", error);
+        res.status(500).json({ error: "Failed to parse CSV file." });
+      });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "An unexpected error occurred." });
+  }
+};
+
+const csvProducts = async (req, res) => {
+  const file = req.file;
+  console.log(file);
+
+  // File validation checks
+  if (!file) {
+    return res.status(400).json({
+      message: "No file uploaded",
+    });
+  }
+
+  if (path.extname(file.originalname).toLowerCase() !== ".csv") {
+    return res.status(400).json({
+      message: "File should be in .CSV format",
+    });
+  }
+
+  try {
+    // Read CSV content
+    const data = await readCSV(file);
+
+    // Map CSV data to desired format
+    const testData = data.map((item) => ({
+      name: item.name,
+      age: item.age,
+      country: item.country,
+      roll: item.roll,
+    }));
+
+    // Insert data into the database in chunks (optional, for handling large files)
+    const chunkSize = 100; // Adjust chunk size as needed
+    const insertPromises = [];
+
+    for (let i = 0; i < testData.length; i += chunkSize) {
+      const chunk = testData.slice(i, i + chunkSize);
+
+      // Insert data in chunks
+      const insertPromise = Test.insertMany(chunk)
+        .then((result) => {
+          console.log(`Inserted chunk ${i / chunkSize + 1}`);
+          return result;
+        })
+        .catch((error) => {
+          console.error("Error inserting chunk:", error);
+          throw error;
+        });
+
+      insertPromises.push(insertPromise);
+    }
+
+    // Wait for all insertions to finish
+    const results = await Promise.all(insertPromises);
+    console.log(results);
+    // Final success response
+    res.json({
+      message: "File uploaded, parsed, and data inserted successfully",
+      data: testData,
+      insertResults: results,
+    });
+  } catch (error) {
+    console.error("Error processing CSV:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
 module.exports = {
   createProduct,
   getProductById,
@@ -288,4 +379,6 @@ module.exports = {
   filterProducts,
   searchProducts,
   getPopularProducts,
+  csvProducts,
+  test,
 };
